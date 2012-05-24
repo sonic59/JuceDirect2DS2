@@ -1,0 +1,19 @@
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{E70BC2C0-13CC-6FA3-B3DD-912DF0BFD07E}") = "JuceDirect2DS2", "JuceDirect2DS2.vcxproj", "{32499772-A8DE-CBCB-6412-18B1EEE56F80}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{32499772-A8DE-CBCB-6412-18B1EEE56F80}.Debug|Win32.ActiveCfg = Debug|Win32
+		{32499772-A8DE-CBCB-6412-18B1EEE56F80}.Debug|Win32.Build.0 = Debug|Win32
+		{32499772-A8DE-CBCB-6412-18B1EEE56F80}.Release|Win32.ActiveCfg = Release|Win32
+		{32499772-A8DE-CBCB-6412-18B1EEE56F80}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
