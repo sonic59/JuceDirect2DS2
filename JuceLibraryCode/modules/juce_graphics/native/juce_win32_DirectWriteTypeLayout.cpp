@@ -348,7 +348,7 @@ namespace DirectWriteTypeLayout
     }
 
     void drawToD2DContext (const AttributedString& text, const Rectangle<float>& area, ID2D1RenderTarget* const renderTarget,
-        IDWriteFactory* const directWriteFactory, ID2D1Factory* const direct2dFactory,
+        IDWriteFactory* const directWriteFactory, ID2D1Factory* const /*direct2dFactory*/,
         IDWriteFontCollection* const fontCollection)
     {
         ComSmartPtr<IDWriteTextLayout> dwTextLayout;
