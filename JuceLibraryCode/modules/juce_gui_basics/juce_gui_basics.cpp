@@ -57,6 +57,14 @@
  #include <windowsx.h>
  #include <vfw.h>
  #include <commdlg.h>
+ #if JUCE_USE_DIRECTWRITE
+  /* If you hit a compile error trying to include these files, you may need to update
+     your version of the Windows SDK to the latest one. The DirectWrite and Direct2D
+     headers are in the version 7 SDKs.
+  */
+  #include <d2d1.h>
+  #include <dwrite.h>
+ #endif
 
  #if JUCE_WEB_BROWSER
   #include <Exdisp.h>
@@ -275,6 +283,9 @@ namespace juce
 #elif JUCE_WINDOWS
  #include "../juce_core/native/juce_win32_ComSmartPtr.h"
  #include "../juce_events/native/juce_win32_HiddenMessageWindow.h"
+#if JUCE_DIRECT2D
+ #include "../juce_graphics/native/juce_win32_Direct2DGraphicsContext.h"
+#endif
  #include "native/juce_win32_Windowing.cpp"
  #include "native/juce_win32_DragAndDrop.cpp"
  #include "native/juce_win32_FileChooser.cpp"

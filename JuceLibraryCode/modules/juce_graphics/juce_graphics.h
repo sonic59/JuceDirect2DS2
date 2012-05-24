@@ -49,6 +49,10 @@
  #define JUCE_USE_DIRECTWRITE 1
 #endif
 
+#ifndef JUCE_DIRECT2D
+ #define JUCE_DIRECT2D 1
+#endif
+
 #ifndef JUCE_INCLUDE_PNGLIB_CODE
  #define JUCE_INCLUDE_PNGLIB_CODE 1
 #endif
