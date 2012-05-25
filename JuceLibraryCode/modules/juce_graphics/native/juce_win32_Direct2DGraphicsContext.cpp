@@ -85,19 +85,17 @@ bool Direct2DLowLevelGraphicsContext::isVectorDevice() const { return false; }
 
 void Direct2DLowLevelGraphicsContext::setOrigin (int x, int y)
 {
-    currentState->origin.addXY (x, y);
+    currentState->transform = AffineTransform::translation ((float) x, (float) y).followedBy (currentState->transform);
 }
 
-void Direct2DLowLevelGraphicsContext::addTransform (const AffineTransform& /*transform*/)
+void Direct2DLowLevelGraphicsContext::addTransform (const AffineTransform& transform)
 {
-    //xxx todo
-    jassertfalse;
+    currentState->transform = transform.followedBy (currentState->transform);
 }
 
 float Direct2DLowLevelGraphicsContext::getScaleFactor()
 {
-    //jassertfalse; //xxx
-    return 1.0f;
+    return currentState->transform.getScaleFactor();
 }
 
 bool Direct2DLowLevelGraphicsContext::clipToRectangle (const Rectangle<int>& r)
@@ -119,24 +117,24 @@ void Direct2DLowLevelGraphicsContext::excludeClipRectangle (const Rectangle<int>
 
 void Direct2DLowLevelGraphicsContext::clipToPath (const Path& path, const AffineTransform& transform)
 {
-    currentState->clipToPath (pathToPathGeometry (path, transform, currentState->origin));
+    currentState->clipToPath (pathToPathGeometry (path, transform));
 }
 
 void Direct2DLowLevelGraphicsContext::clipToImageAlpha (const Image& sourceImage, const AffineTransform& transform)
 {
-    currentState->clipToImage (sourceImage,transform);
+    currentState->clipToImage (sourceImage, transform);
 }
 
 bool Direct2DLowLevelGraphicsContext::clipRegionIntersects (const Rectangle<int>& r)
 {
-    const Rectangle<int> r2 (r + currentState->origin);
+    Rectangle<int> r2 = r.toFloat().transformed (currentState->transform).getSmallestIntegerContainer();
     return currentState->clipRect.intersects (r2);
 }
 
 Rectangle<int> Direct2DLowLevelGraphicsContext::getClipBounds() const
 {
     // xxx could this take into account complex clip regions?
-    return currentState->clipRect - currentState->origin;
+    return currentState->clipRect.toFloat().transformed (currentState->transform.inverted()).getSmallestIntegerContainer();
 }
 
 bool Direct2DLowLevelGraphicsContext::isClipEmpty() const
@@ -183,14 +181,16 @@ void Direct2DLowLevelGraphicsContext::setInterpolationQuality (Graphics::Resampl
 
 void Direct2DLowLevelGraphicsContext::fillRect (const Rectangle<int>& r, bool /*replaceExistingContents*/)
 {
+    renderingTarget->SetTransform (transformToMatrix (currentState->transform));
     currentState->createBrush();
-    renderingTarget->FillRectangle (rectangleToRectF (r + currentState->origin), currentState->currentBrush);
+    renderingTarget->FillRectangle (rectangleToRectF (r), currentState->currentBrush);
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::fillPath (const Path& p, const AffineTransform& transform)
 {
     currentState->createBrush();
-    ComSmartPtr <ID2D1Geometry> geometry (pathToPathGeometry (p, transform, currentState->origin));
+    ComSmartPtr <ID2D1Geometry> geometry (pathToPathGeometry (p, transform.followedBy (currentState->transform)));
 
     if (renderingTarget != nullptr)
         renderingTarget->FillGeometry (geometry, currentState->currentBrush);
@@ -198,10 +198,7 @@ void Direct2DLowLevelGraphicsContext::fillPath (const Path& p, const AffineTrans
 
 void Direct2DLowLevelGraphicsContext::drawImage (const Image& image, const AffineTransform& transform)
 {
-    const int x = currentState->origin.getX();
-    const int y = currentState->origin.getY();
-
-    renderingTarget->SetTransform (transformToMatrix (transform) * D2D1::Matrix3x2F::Translation ((FLOAT) x, (FLOAT) y));
+    renderingTarget->SetTransform (transformToMatrix (transform.followedBy (currentState->transform)));
 
     D2D1_SIZE_U size;
     size.width = image.getWidth();
@@ -220,47 +217,43 @@ void Direct2DLowLevelGraphicsContext::drawImage (const Image& image, const Affin
         if (tempBitmap != nullptr)
             renderingTarget->DrawBitmap (tempBitmap);
     }
-
     renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::drawLine (const Line <float>& line)
 {
     // xxx doesn't seem to be correctly aligned, may need nudging by 0.5 to match the software renderer's behaviour
-    const Line<float> l (line.getStart() + currentState->origin.toFloat(),
-                            line.getEnd() + currentState->origin.toFloat());
-
+    renderingTarget->SetTransform (transformToMatrix (currentState->transform));
     currentState->createBrush();
 
-    renderingTarget->DrawLine (D2D1::Point2F (l.getStartX(), l.getStartY()),
-                                D2D1::Point2F (l.getEndX(), l.getEndY()),
+    renderingTarget->DrawLine (D2D1::Point2F (line.getStartX(), line.getStartY()),
+                                D2D1::Point2F (line.getEndX(), line.getEndY()),
                                 currentState->currentBrush);
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::drawVerticalLine (int x, float top, float bottom)
 {
     // xxx doesn't seem to be correctly aligned, may need nudging by 0.5 to match the software renderer's behaviour
+    renderingTarget->SetTransform (transformToMatrix (currentState->transform));
     currentState->createBrush();
 
-    x += currentState->origin.getX();
-    const int y = currentState->origin.getY();
-
-    renderingTarget->DrawLine (D2D1::Point2F ((FLOAT) x, y + top),
-                                D2D1::Point2F ((FLOAT) x, y + bottom),
+    renderingTarget->DrawLine (D2D1::Point2F ((FLOAT) x, top),
+                                D2D1::Point2F ((FLOAT) x, bottom),
                                 currentState->currentBrush);
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::drawHorizontalLine (int y, float left, float right)
 {
     // xxx doesn't seem to be correctly aligned, may need nudging by 0.5 to match the software renderer's behaviour
+    renderingTarget->SetTransform (transformToMatrix (currentState->transform));
     currentState->createBrush();
 
-    y += currentState->origin.getY();
-    const int x = currentState->origin.getX();
-
-    renderingTarget->DrawLine (D2D1::Point2F (x + left, (FLOAT) y),
-                                D2D1::Point2F (x + right, (FLOAT) y),
+    renderingTarget->DrawLine (D2D1::Point2F (left, (FLOAT) y),
+                                D2D1::Point2F (right, (FLOAT) y),
                                 currentState->currentBrush);
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::setFont (const Font& newFont)
@@ -275,15 +268,14 @@ const Font& Direct2DLowLevelGraphicsContext::getFont()
 
 void Direct2DLowLevelGraphicsContext::drawGlyph (int glyphNumber, const AffineTransform& transform)
 {
-    const float x = (float) currentState->origin.getX();
-    const float y = (float) currentState->origin.getY();
-
     currentState->createBrush();
     currentState->createFont();
 
     float hScale = currentState->font.getHorizontalScale();
 
-    renderingTarget->SetTransform (D2D1::Matrix3x2F::Scale (hScale, 1) * transformToMatrix (transform) * D2D1::Matrix3x2F::Translation (x, y));
+    AffineTransform t = AffineTransform::scale (hScale, 1).followedBy (transform).followedBy(currentState->transform);
+
+    renderingTarget->SetTransform (transformToMatrix (t));
 
     const UINT16 glyphIndices = (UINT16) glyphNumber;
     const FLOAT glyphAdvances = 0;
@@ -307,11 +299,11 @@ void Direct2DLowLevelGraphicsContext::drawGlyph (int glyphNumber, const AffineTr
 
 bool Direct2DLowLevelGraphicsContext::drawTextLayout (const AttributedString& text, const Rectangle<float>& area)
 {
+    renderingTarget->SetTransform (transformToMatrix (currentState->transform));
     const Direct2DFactories& factories = Direct2DFactories::getInstance();
-    const float x = (float) currentState->origin.getX();
-    const float y = (float) currentState->origin.getY();
-    Rectangle<float>  newArea(area.getX() + x, area.getY() + y, area.getWidth(), area.getHeight());
+    Rectangle<float>  newArea(area.getX(), area.getY(), area.getWidth(), area.getHeight());
     DirectWriteTypeLayout::drawToD2DContext (text, newArea, renderingTarget, factories.directWriteFactory, factories.d2dFactory, factories.systemFonts);
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     return true;
 }
 
@@ -331,8 +323,8 @@ Direct2DLowLevelGraphicsContext::SavedState::SavedState (Direct2DLowLevelGraphic
         // bottleneck.. Can the same internal objects be shared by multiple state objects, maybe using copy-on-write?
         setFill (owner.currentState->fillType);
         currentBrush = owner.currentState->currentBrush;
-        origin = owner.currentState->origin;
         clipRect = owner.currentState->clipRect;
+        transform = owner.currentState->transform;
 
         font = owner.currentState->font;
         currentFontFace = owner.currentState->currentFontFace;
@@ -365,7 +357,8 @@ void Direct2DLowLevelGraphicsContext::SavedState::clearClip()
 void Direct2DLowLevelGraphicsContext::SavedState::clipToRectangle (const Rectangle<int>& r)
 {
     clearClip();
-    clipRect = r + origin;
+    Rectangle<int> r2 = r.toFloat().transformed (transform).getSmallestIntegerContainer();
+    clipRect = r2;
     shouldClipRect = true;
     pushClips();
 }
@@ -577,9 +570,6 @@ void Direct2DLowLevelGraphicsContext::SavedState::createBrush()
 {
     if (currentBrush == 0)
     {
-        const int x = origin.getX();
-        const int y = origin.getY();
-
         if (fillType.isColour())
         {
             D2D1_COLOR_F colour = colourToD2D (fillType.colour);
@@ -618,7 +608,7 @@ void Direct2DLowLevelGraphicsContext::SavedState::createBrush()
 
             D2D1_BRUSH_PROPERTIES brushProps;
             brushProps.opacity = fillType.getOpacity();
-            brushProps.transform = transformToMatrix (fillType.transform);
+            brushProps.transform = transformToMatrix (fillType.transform.followedBy (transform));
 
             const int numColors = fillType.gradient->getNumColours();
 
@@ -641,7 +631,7 @@ void Direct2DLowLevelGraphicsContext::SavedState::createBrush()
                 float r = p1.getDistanceFrom (p2);
 
                 D2D1_RADIAL_GRADIENT_BRUSH_PROPERTIES props =
-                    D2D1::RadialGradientBrushProperties (D2D1::Point2F (p1.getX() + x, p1.getY() + y),
+                    D2D1::RadialGradientBrushProperties (D2D1::Point2F (p1.getX(), p1.getY()),
                                                             D2D1::Point2F (0, 0),
                                                             r, r);
 
@@ -656,8 +646,8 @@ void Direct2DLowLevelGraphicsContext::SavedState::createBrush()
                 const Point<float>& p2 = fillType.gradient->point2;
 
                 D2D1_LINEAR_GRADIENT_BRUSH_PROPERTIES props =
-                    D2D1::LinearGradientBrushProperties (D2D1::Point2F (p1.getX() + x, p1.getY() + y),
-                                                            D2D1::Point2F (p2.getX() + x, p2.getY() + y));
+                    D2D1::LinearGradientBrushProperties (D2D1::Point2F (p1.getX(), p1.getY()),
+                                                            D2D1::Point2F (p2.getX(), p2.getY()));
 
                 owner.renderingTarget->CreateLinearGradientBrush (props, brushProps, gradientStops, linearGradient.resetAndGetPointerAddress());
 
@@ -709,7 +699,7 @@ ID2D1PathGeometry* Direct2DLowLevelGraphicsContext::rectListToPathGeometry (cons
     return p;
 }
 
-void Direct2DLowLevelGraphicsContext::pathToGeometrySink (const Path& path, ID2D1GeometrySink* sink, const AffineTransform& transform, int x, int y)
+void Direct2DLowLevelGraphicsContext::pathToGeometrySink (const Path& path, ID2D1GeometrySink* sink, const AffineTransform& transform)
 {
     Path::Iterator it (path);
 
@@ -722,13 +712,13 @@ void Direct2DLowLevelGraphicsContext::pathToGeometrySink (const Path& path, ID2D
                 D2D1_BEZIER_SEGMENT seg;
 
                 transform.transformPoint (it.x1, it.y1);
-                seg.point1 = D2D1::Point2F (it.x1 + x, it.y1 + y);
+                seg.point1 = D2D1::Point2F (it.x1, it.y1);
 
                 transform.transformPoint (it.x2, it.y2);
-                seg.point2 = D2D1::Point2F (it.x2 + x, it.y2 + y);
+                seg.point2 = D2D1::Point2F (it.x2, it.y2);
 
                 transform.transformPoint(it.x3, it.y3);
-                seg.point3 = D2D1::Point2F (it.x3 + x, it.y3 + y);
+                seg.point3 = D2D1::Point2F (it.x3, it.y3);
 
                 sink->AddBezier (seg);
                 break;
@@ -737,7 +727,7 @@ void Direct2DLowLevelGraphicsContext::pathToGeometrySink (const Path& path, ID2D
             case Path::Iterator::lineTo:
             {
                 transform.transformPoint (it.x1, it.y1);
-                sink->AddLine (D2D1::Point2F (it.x1 + x, it.y1 + y));
+                sink->AddLine (D2D1::Point2F (it.x1, it.y1));
                 break;
             }
 
@@ -746,10 +736,10 @@ void Direct2DLowLevelGraphicsContext::pathToGeometrySink (const Path& path, ID2D
                 D2D1_QUADRATIC_BEZIER_SEGMENT seg;
 
                 transform.transformPoint (it.x1, it.y1);
-                seg.point1 = D2D1::Point2F (it.x1 + x, it.y1 + y);
+                seg.point1 = D2D1::Point2F (it.x1, it.y1);
 
                 transform.transformPoint (it.x2, it.y2);
-                seg.point2 = D2D1::Point2F (it.x2 + x, it.y2 + y);
+                seg.point2 = D2D1::Point2F (it.x2, it.y2);
 
                 sink->AddQuadraticBezier (seg);
                 break;
@@ -764,14 +754,14 @@ void Direct2DLowLevelGraphicsContext::pathToGeometrySink (const Path& path, ID2D
             case Path::Iterator::startNewSubPath:
             {
                 transform.transformPoint (it.x1, it.y1);
-                sink->BeginFigure (D2D1::Point2F (it.x1 + x, it.y1 + y), D2D1_FIGURE_BEGIN_FILLED);
+                sink->BeginFigure (D2D1::Point2F (it.x1, it.y1), D2D1_FIGURE_BEGIN_FILLED);
                 break;
             }
         }
     }
 }
 
-ID2D1PathGeometry* Direct2DLowLevelGraphicsContext::pathToPathGeometry (const Path& path, const AffineTransform& transform, const Point<int>& point)
+ID2D1PathGeometry* Direct2DLowLevelGraphicsContext::pathToPathGeometry (const Path& path, const AffineTransform& transform)
 {
     ID2D1PathGeometry* p = nullptr;
     Direct2DFactories::getInstance().d2dFactory->CreatePathGeometry (&p);
@@ -780,7 +770,7 @@ ID2D1PathGeometry* Direct2DLowLevelGraphicsContext::pathToPathGeometry (const Pa
     HRESULT hr = p->Open (sink.resetAndGetPointerAddress());
     sink->SetFillMode (D2D1_FILL_MODE_WINDING); // xxx need to check Path::isUsingNonZeroWinding()
 
-    pathToGeometrySink (path, sink, transform, point.getX(), point.getY());
+    pathToGeometrySink (path, sink, transform);
 
     hr = sink->Close();
     return p;

@@ -112,7 +112,7 @@ private:
 
         Direct2DLowLevelGraphicsContext& owner;
 
-        Point<int> origin;
+        AffineTransform transform;
 
         Font font;
         float fontHeightToEmSizeFactor;
@@ -162,8 +162,8 @@ private:
     static const D2D1_POINT_2F pointTransformed (int x, int y, const AffineTransform& transform = AffineTransform::identity);
     static void rectToGeometrySink (const Rectangle<int>& rect, ID2D1GeometrySink* sink);
     static ID2D1PathGeometry* rectListToPathGeometry (const RectangleList& clipRegion);
-    static void pathToGeometrySink (const Path& path, ID2D1GeometrySink* sink, const AffineTransform& transform, int x, int y);
-    static ID2D1PathGeometry* pathToPathGeometry (const Path& path, const AffineTransform& transform, const Point<int>& point);
+    static void pathToGeometrySink (const Path& path, ID2D1GeometrySink* sink, const AffineTransform& transform);
+    static ID2D1PathGeometry* pathToPathGeometry (const Path& path, const AffineTransform& transform);
     static const D2D1::Matrix3x2F transformToMatrix (const AffineTransform& transform);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Direct2DLowLevelGraphicsContext);
