@@ -100,12 +100,14 @@ float Direct2DLowLevelGraphicsContext::getScaleFactor()
 
 bool Direct2DLowLevelGraphicsContext::clipToRectangle (const Rectangle<int>& r)
 {
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     currentState->clipToRectangle (r);
     return ! isClipEmpty();
 }
 
 bool Direct2DLowLevelGraphicsContext::clipToRectangleList (const RectangleList& clipRegion)
 {
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     currentState->clipToRectList (rectListToPathGeometry (clipRegion));
     return ! isClipEmpty();
 }
@@ -117,11 +119,13 @@ void Direct2DLowLevelGraphicsContext::excludeClipRectangle (const Rectangle<int>
 
 void Direct2DLowLevelGraphicsContext::clipToPath (const Path& path, const AffineTransform& transform)
 {
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     currentState->clipToPath (pathToPathGeometry (path, transform));
 }
 
 void Direct2DLowLevelGraphicsContext::clipToImageAlpha (const Image& sourceImage, const AffineTransform& transform)
 {
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     currentState->clipToImage (sourceImage, transform);
 }
 
@@ -184,11 +188,11 @@ void Direct2DLowLevelGraphicsContext::fillRect (const Rectangle<int>& r, bool /*
     renderingTarget->SetTransform (transformToMatrix (currentState->transform));
     currentState->createBrush();
     renderingTarget->FillRectangle (rectangleToRectF (r), currentState->currentBrush);
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::fillPath (const Path& p, const AffineTransform& transform)
 {
+    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     currentState->createBrush();
     ComSmartPtr <ID2D1Geometry> geometry (pathToPathGeometry (p, transform.followedBy (currentState->transform)));
 
@@ -217,7 +221,6 @@ void Direct2DLowLevelGraphicsContext::drawImage (const Image& image, const Affin
         if (tempBitmap != nullptr)
             renderingTarget->DrawBitmap (tempBitmap);
     }
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::drawLine (const Line <float>& line)
@@ -229,7 +232,6 @@ void Direct2DLowLevelGraphicsContext::drawLine (const Line <float>& line)
     renderingTarget->DrawLine (D2D1::Point2F (line.getStartX(), line.getStartY()),
                                 D2D1::Point2F (line.getEndX(), line.getEndY()),
                                 currentState->currentBrush);
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::drawVerticalLine (int x, float top, float bottom)
@@ -241,7 +243,6 @@ void Direct2DLowLevelGraphicsContext::drawVerticalLine (int x, float top, float 
     renderingTarget->DrawLine (D2D1::Point2F ((FLOAT) x, top),
                                 D2D1::Point2F ((FLOAT) x, bottom),
                                 currentState->currentBrush);
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::drawHorizontalLine (int y, float left, float right)
@@ -253,7 +254,6 @@ void Direct2DLowLevelGraphicsContext::drawHorizontalLine (int y, float left, flo
     renderingTarget->DrawLine (D2D1::Point2F (left, (FLOAT) y),
                                 D2D1::Point2F (right, (FLOAT) y),
                                 currentState->currentBrush);
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 void Direct2DLowLevelGraphicsContext::setFont (const Font& newFont)
@@ -294,7 +294,6 @@ void Direct2DLowLevelGraphicsContext::drawGlyph (int glyphNumber, const AffineTr
     glyphRun.bidiLevel = 0;
 
     renderingTarget->DrawGlyphRun (D2D1::Point2F (0, 0), &glyphRun, currentState->currentBrush);
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
 }
 
 bool Direct2DLowLevelGraphicsContext::drawTextLayout (const AttributedString& text, const Rectangle<float>& area)
@@ -303,7 +302,6 @@ bool Direct2DLowLevelGraphicsContext::drawTextLayout (const AttributedString& te
     const Direct2DFactories& factories = Direct2DFactories::getInstance();
     Rectangle<float>  newArea(area.getX(), area.getY(), area.getWidth(), area.getHeight());
     DirectWriteTypeLayout::drawToD2DContext (text, newArea, renderingTarget, factories.directWriteFactory, factories.d2dFactory, factories.systemFonts);
-    renderingTarget->SetTransform (D2D1::IdentityMatrix());
     return true;
 }
 
